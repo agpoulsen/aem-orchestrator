@@ -5,6 +5,12 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.TrustAllStrategy;
+import org.apache.http.conn.ssl.SSLContextBuilder;
+import javax.net.ssl.SSLContext;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
@@ -33,8 +39,11 @@ public class HttpUtil {
      * @return true if response is a HTTP status OK (200)
      * @throws IOException (normally if can't connect)
      * @throws ClientProtocolException if there's an error in the HTTP protocol
+     * @throws KeyStoreException if there's an error with the SSL Keystore
+     * @throws KeyManagementException if there's an error with the SSL Keymanagement
+     * @throws NoSuchAlgorithmException if there's an error with the SSL Algorithm
      */
-    public boolean isHttpGetResponseOk(String url) throws ClientProtocolException, IOException {
+    public boolean isHttpGetResponseOk(String url) throws ClientProtocolException, IOException, KeyStoreException, KeyManagementException, NoSuchAlgorithmException {
 
         int statusCode;
 
@@ -51,13 +60,18 @@ public class HttpUtil {
         return statusCode == HttpStatus.SC_OK;
     }
 
-    private CloseableHttpClient buildCloseableHttpClient() {
+    private CloseableHttpClient buildCloseableHttpClient() throws KeyStoreException, KeyManagementException, NoSuchAlgorithmException{
 
         CloseableHttpClient client;
 
         if (enableRelaxedSslHttpClient) {
+            SSLContext sslContext = new SSLContextBuilder()
+              .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
+              .build();
+
             client = HttpClientBuilder.create()
-                    .setSSLHostnameVerifier(new NoopHostnameVerifier())
+                    .setSSLContext(sslContext)
+                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
                     .build();
 
         } else {
